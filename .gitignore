@@ -11,6 +11,9 @@
 # production
 /build
 
+# Used for device ids and their associated API tokens
+src/obniz/devices.js
+
 # misc
 .DS_Store
 .env.local
