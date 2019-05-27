@@ -1,5 +1,6 @@
 import React from 'react'
-import { Slider } from '@material-ui/lab'
+import Obniz from '../obniz/Obniz'
+import devices from '../obniz/devices'
 import { Button } from '@material-ui/core'
 
 const buttonsRow1 = [41, 42, 43, 44, 57, 58, 59, 60]
@@ -41,6 +42,23 @@ class ControllerInterface extends React.Component {
     current: 0,
     red: 0,
     green: 0,
+    pins: {},
+  }
+
+  componentDidMount () {
+    this.props.addEventListener(this.handleEvent)
+  }
+
+  handleEvent = e => {
+    if (e.type !== 'noteon') { return }
+    if (!buttonsRow2.includes(e.number)) { return }
+
+    const convertToPin = n => (n - 72) % 12
+    const pin = convertToPin(e.number)
+    this.setState(
+      state => ({ pins: { ...state.pins, [pin]: !state.pins[pin] } }),
+      this.setPins
+    )
   }
 
   clearAll = () => {
@@ -48,51 +66,85 @@ class ControllerInterface extends React.Component {
     clearAll()
   }
 
+  setPins = () => {
+    const { pins } = this.state
+    const { setLED } = this.props
+
+    const convertToControl = pin => {
+      const offset = pin <= 4 ? 72 : 84
+
+      return pin + offset
+    }
+
+    Object.entries(pins).forEach(([pin, on]) => {
+      const controlNum = convertToControl(parseInt(pin, 10))
+      const value = on ? 3 : 0
+      setLED(controlNum, 0, value)
+    })
+  }
+
   setValue = field => e => this.setState({ [field]: e.target.value })
+
+  setRow = arr => async (value, mask) => {
+    const { setLED } = this.props
+    const red = value * ((mask & 2) >> 1)
+    const green = value * (mask & 1)
+    arr.forEach(n => setLED(n, red, green))
+    await sleep(200)
+  }
+
+  fadeInRow = async mask => {
+    await this.setRow(buttonRows)(0, mask)
+    await this.setRow(buttonRows)(1, mask)
+    await this.setRow(buttonRows)(2, mask)
+    await this.setRow(buttonRows)(3, mask)
+    await this.setRow(buttonRows)(2, mask)
+    await this.setRow(buttonRows)(1, mask)
+  }
 
   cycle = async () => {
     const { setLED } = this.props
     this.clearAll()
 
     const animateButtons = withArr(buttonRows)
-    await animateButtons(n => setLED(n, 3, 0))
-    await animateButtons(n => setLED(n, 0, 3))
-    await animateButtons(n => setLED(n, 3, 3))
+    // await animateButtons(n => setLED(n, 3, 0))
+    // await animateButtons(n => setLED(n, 0, 3))
+    // await animateButtons(n => setLED(n, 3, 3))
 
     const animateDials = withArr(dialRows)
-    await animateDials(n => setLED(n, 3, 0))
-    await animateDials(n => setLED(n, 0, 3))
-    await animateDials(n => setLED(n, 3, 3))
-  }
+    // await animateDials(n => setLED(n, 3, 0))
+    // await animateDials(n => setLED(n, 0, 3))
+    // await animateDials(n => setLED(n, 3, 3))
 
-  handleSliderChange = (e, value) => {
-    const { setLED } = this.props
-    // this.clearAll()
-    setLED(value, 3, 0)
-    this.setState({ current: value })
+    for (let i=0; i<100; i++) {
+      await this.fadeInRow(i % 4)
+    }
   }
 
   render () {
     const { controllers, buttons } = this.props
-    const { current } = this.state
+
+    let text = ''
+    for (let i=1; i<=8; i++) {
+      text += this.state.pins[i] ? i : ' '
+    }
+
+    const device = devices[0]
 
     return (
       <div>
-        <Button variant="contained" onClick={() => this.handleSliderChange(0, current-1)}>-</Button>
-        <Button variant="contained" onClick={() => this.handleSliderChange(0, current+1)}>+</Button>
+        <Obniz id={device.id} text={text} />
         <Button variant="contained" onClick={this.clearAll}>Clear All</Button>
         <br />
         <Button variant="contained" color="secondary" onClick={this.cycle}>Cycle</Button>
         <br />
-        {current}
-        <br />
-        <br />
-        <Slider value={current} min={0} max={127} step={1} onChange={this.handleSliderChange} />
         <br />
         <h3>Controller</h3>
         <pre>{JSON.stringify(controllers, null, 4)}</pre>
         <h3>Button</h3>
         <pre>{JSON.stringify(buttons, null, 4)}</pre>
+        <h3>Pins</h3>
+        <pre>{JSON.stringify(this.state.pins, null, 4)}</pre>
       </div>
     )
   }

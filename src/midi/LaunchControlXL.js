@@ -2,7 +2,7 @@ import React from 'react'
 import WebMidi from 'webmidi'
 
 const trace = x => {
-  console.log(x)
+  // console.log(x)
   return x
 }
 
@@ -32,6 +32,7 @@ class LaunchControlXL extends React.Component {
     output: null,
     controllers: {},
     buttons: {},
+    listeners: [],
   }
 
   componentDidMount () {
@@ -59,6 +60,7 @@ class LaunchControlXL extends React.Component {
         setController: this.setController,
         setLED: this.setLED,
         clearAll: this.clearAll,
+        addEventListener: this.addEventListener,
       }, () => {
         this.registerListeners()
       })
@@ -66,6 +68,15 @@ class LaunchControlXL extends React.Component {
       // output.playNote(42, 1, { rawVelocity: true, velocity: 63 })
       console.log(`WebMidi enabled for ${deviceName}!`)
     })
+  }
+
+  addEventListener = fn => {
+    const { listeners } = this.state
+    this.setState({ listeners: [...listeners, fn] })
+  }
+
+  triggerListener = type => event => {
+    this.state.listeners.forEach(fn => fn({ ...event, type }))
   }
 
   clearAll = () => {
@@ -90,17 +101,23 @@ class LaunchControlXL extends React.Component {
 
   registerListeners = () => {
     const { input } = this.state
+
     input.addListener('controlchange', 'all', e => {
       const { controller, value } = trace(mapControlChangeEvent(e))
       this.setState({ controllers: { ...this.state.controllers, [controller]: value } })
+      this.triggerListener('controlchange')(mapControlChangeEvent(e))
     })
+
     input.addListener('noteon', 'all',  e => {
       const { number } = mapNoteEvent(e)
       this.setState({ buttons: { ...this.state.buttons, [number]: true } })
+      this.triggerListener('noteon')(mapNoteEvent(e))
     })
+
     input.addListener('noteoff', 'all',  e => {
       const { number } = mapNoteEvent(e)
       this.setState({ buttons: { ...this.state.buttons, [number]: false } })
+      this.triggerListener('noteoff')(mapNoteEvent(e))
     })
   }
 

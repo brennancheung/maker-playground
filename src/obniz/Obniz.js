@@ -11,8 +11,11 @@ class Obniz extends React.Component {
     const { id } = this.props
     const device = devices.find(propEq('id', id))
     const access_token = device.token
-    this.obniz = new Obniz(id, { access_token })
-    this.obniz.onconnect = this.renderRemote
+    this.obniz = new window.Obniz(id, { access_token })
+    this.obniz.onconnect = () => {
+      this.obniz.display.font('monospace', 24)
+      this.renderRemote()
+    }
   }
 
   renderRemote = () => {
@@ -20,9 +23,18 @@ class Obniz extends React.Component {
     this.obniz.display.print(this.state.text)
   }
 
+  componentDidUpdate (prevProps) {
+    const { text } = this.props
+    if (text !== prevProps.text) {
+      this.setState({ text }, this.renderRemote)
+    }
+  }
+
   handleTextChange = e => this.setState({ text: e.target.value }, this.renderRemote)
 
   render () {
+    return null
+    /*
     return (
       <div style={{ marginBottom: '30px' }}>
         <div>
@@ -30,6 +42,7 @@ class Obniz extends React.Component {
         </div>
       </div>
     )
+    */
   }
 }
 
