@@ -140,7 +140,10 @@ class ControllerInterface extends React.Component {
 
   handleInputChange = (pin, value) => {
     const inputs = { ...this.state.inputs, [pin]: value }
-    this.setState({ inputs })
+    this.setState(
+      state => ({ inputs, pins: { ...state.pins, ...inputs } }),
+      this.setPins,
+    )
   }
 
   render () {
