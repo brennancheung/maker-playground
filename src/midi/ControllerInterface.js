@@ -2,15 +2,16 @@ import React from 'react'
 import Obniz from '../obniz/Obniz'
 import devices from '../obniz/devices'
 import { Button } from '@material-ui/core'
+import { mapObjValues } from '../fp'
 
 const buttonsRow1 = [41, 42, 43, 44, 57, 58, 59, 60]
 const buttonsRow2 = [73, 74, 75, 76, 89, 90, 91, 92]
-const buttonRows = [...buttonsRow1, ...buttonsRow2]
+export const buttonRows = [...buttonsRow1, ...buttonsRow2]
 
 const dialsRow1 = [13, 29, 45, 61, 77, 93, 109, 125]
 const dialsRow2 = dialsRow1.map(x => x + 1)
 const dialsRow3 = dialsRow1.map(x => x + 2)
-const dialRows = [...dialsRow1, ...dialsRow2, ...dialsRow3]
+export const dialRows = [...dialsRow1, ...dialsRow2, ...dialsRow3]
 
 /*
 const forRange = async (start, stop, fn) => {
@@ -28,7 +29,7 @@ const sleep = ms => {
   return p
 }
 
-const withArr = arr => async fn => {
+export const withArr = arr => async fn => {
   for (let i=0; i<arr.length; i++) {
     fn(arr[i])
     await sleep(50)
@@ -43,6 +44,7 @@ class ControllerInterface extends React.Component {
     red: 0,
     green: 0,
     pins: {},
+    inputs: {},
   }
 
   componentDidMount () {
@@ -50,9 +52,22 @@ class ControllerInterface extends React.Component {
   }
 
   handleEvent = e => {
-    if (e.type !== 'noteon') { return }
-    if (!buttonsRow2.includes(e.number)) { return }
+    if (buttonsRow2.includes(e.number)) { this.handleToggleButton(e) }
+    if (buttonsRow1.includes(e.number)) { this.handleMomentaryButton(e) }
+  }
 
+  handleMomentaryButton = e => {
+    const convertToPin = n => (n - 40) % 12
+    const pin = convertToPin(e.number)
+    const value = e.type === 'noteon'
+    this.setState(
+      state => ({ pins: { ...state.pins, [pin]: value } }),
+      this.setPins
+    )
+  }
+
+  handleToggleButton = e => {
+    if (e.type !== 'noteon') { return }
     const convertToPin = n => (n - 72) % 12
     const pin = convertToPin(e.number)
     this.setState(
@@ -103,37 +118,48 @@ class ControllerInterface extends React.Component {
   }
 
   cycle = async () => {
-    const { setLED } = this.props
+    // const { setLED } = this.props
     this.clearAll()
 
-    const animateButtons = withArr(buttonRows)
+    // const animateButtons = withArr(buttonRows)
     // await animateButtons(n => setLED(n, 3, 0))
     // await animateButtons(n => setLED(n, 0, 3))
     // await animateButtons(n => setLED(n, 3, 3))
 
-    const animateDials = withArr(dialRows)
+    // const animateDials = withArr(dialRows)
     // await animateDials(n => setLED(n, 3, 0))
     // await animateDials(n => setLED(n, 0, 3))
     // await animateDials(n => setLED(n, 3, 3))
 
+    /*
     for (let i=0; i<100; i++) {
       await this.fadeInRow(i % 4)
     }
+    */
+  }
+
+  handleInputChange = (pin, value) => {
+    const inputs = { ...this.state.inputs, [pin]: value }
+    this.setState({ inputs })
   }
 
   render () {
     const { controllers, buttons } = this.props
+    const { inputs, pins } = this.state
 
     let text = ''
     for (let i=1; i<=8; i++) {
-      text += this.state.pins[i] ? i : ' '
+      text += pins[i] ? i : ' '
     }
 
-    const device = devices[0]
+    const device = devices[4]
+    const valuesToBin = mapObjValues(b => b ? 1 : 0)
+    const binInputs = valuesToBin(inputs)
+    const binPins = valuesToBin(pins)
 
     return (
       <div>
-        <Obniz id={device.id} text={text} />
+        <Obniz id={device.id} text={text} pins={pins} onInputChange={this.handleInputChange} />
         <Button variant="contained" onClick={this.clearAll}>Clear All</Button>
         <br />
         <Button variant="contained" color="secondary" onClick={this.cycle}>Cycle</Button>
@@ -144,7 +170,12 @@ class ControllerInterface extends React.Component {
         <h3>Button</h3>
         <pre>{JSON.stringify(buttons, null, 4)}</pre>
         <h3>Pins</h3>
-        <pre>{JSON.stringify(this.state.pins, null, 4)}</pre>
+        <pre>{JSON.stringify(pins, null, 4)}</pre>
+        <h3>Inputs</h3>
+        <pre>{JSON.stringify(binInputs, null, 4)}</pre>
+        <h3>i: {binPins[1]}, s: {binPins[2]}</h3>
+        <h3>a: {binInputs[5]}, b: {binInputs[6]}</h3>
+        <h3>o: {binInputs[7]}, c: {binInputs[8]}</h3>
       </div>
     )
   }
